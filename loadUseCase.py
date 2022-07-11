@@ -35,6 +35,7 @@ def loadUseCaseObjects(eventObjectsToCreate):
             strCreate = "create " + str(objects)+'\n' #"create 3424"
             p.stdin.write(bytes(strCreate,encoding='utf8'))
             p.stdin.flush()
+            self.dataSentSignal.emit()
     t2 = threading.Thread(target=addResource_thread)
     t2.start()
     loadedUseCasesSatus = "YES"
