@@ -1,6 +1,7 @@
 # This Python file uses the following encoding: utf-8
 import os
 from pathlib import Path
+from site import check_enableusersite
 import sys
 
 from csv import list_dialects
@@ -10,12 +11,14 @@ import threading
 from time import sleep
 from turtle import showturtle
 from PyQt5 import QtCore, QtGui, QtWidgets
+from matplotlib.cbook import silent_list
+from matplotlib.pyplot import connect
 
 import settings
 import time
 from clientConnex import connectIface_function,p
 from simulationEvents import sendEvent, loadEventList
-from loadUseCase import loadUseCaseObjects
+from loadUseCase import loadUseCaseObjects,setUsecaseObjects
 from PyQt5.QtCore import (QCoreApplication, QObject, QRunnable, QThread,
                           QThreadPool, pyqtSignal)
 from PyQt5.QtWidgets import QApplication
@@ -26,6 +29,9 @@ import logging
 from lwm2mSniff import lwm2mSniffer
 
 
+
+loadedUseCasesSatus = "NO"
+
 count=0
 logging.basicConfig(level=logging.WARNING)
 #connexion_status = 'None'logTextToShow#simulationStatus = "OFF"
@@ -35,19 +41,27 @@ LOGlist = ""
 pausedTime ='None'
 from IHM import Ui_MainWindow
 
-class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow       ):
+
+
+
+
+class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     dataSentSignal = pyqtSignal()    
     startSimulationSignal = pyqtSignal()
     stopSimulationSignal = pyqtSignal()
+    loadedObjectsSignal = pyqtSignal()
+    
     def __init__(self):
+        LOGlist=""
         QtWidgets.QMainWindow.__init__(self)
         self.setupUi(self)
         self.connectClickabales()
-
+        self.createSniffer()
 
     def connectClickabales(self):
          #make drop menus clickabel
+        #self.dataSentSignal.emit()
         self.useCase_dropBox.activated.connect(self.selectUseCase)
         self.useCase_dropBox.activated.connect(self.setAvailableEvents)
         self.event_dropBox.activated.connect(self.selectEvent)
@@ -69,12 +83,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow       ):
 
         #for tests
         self.sendingDataPeridod_Input.setText("3")
-
+        self.simulationDuration_Input.setText("100")
         #connect signals
         self.dataSentSignal.connect(self.showLog)
         self.dataSentSignal.connect(self.measureData)
+        
         self.startSimulationSignal.connect(self.startWatch) 
         self.stopSimulationSignal.connect(self.stopWatch)
+       
         #self.lw_sniffer.newPacketSignal.connect(self.measureData)
 
         #add logger box
@@ -82,79 +98,89 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow       ):
     
     def sendResource_function(self,resourceList):
         from clientConnex import p
-        global t6
-        #resourceList=[3411,3336,3346,6]
-        # if(simulationStatus == "OFF"):
-        #     return 0
-            
         
         for presentResource in range(len(resourceList)):
                 strSend = "send -c=110 " + str(resourceList[presentResource])+'\n' #strSend = "send " + resourceList[presentResource]+'\n' #"create 3424"
                 p.stdin.write(bytes(strSend,encoding='utf8'))
                 p.stdin.flush()
-        #t6.join()        
+          
     
     
     def peridoicMode_fucntion(self,sendingPeriod,simulationDuration): #,sendingDataPeridod_Input,resourceList
         global t6
+        global listToSen
         
+        i=0
         def periodicMode_thread():
-            
-            
-            global sentResources
-            while settings.simulationStatus == "ON" and ((time.time() - simulationStartTime) <= simulationDuration):
 
+            global sentResources
+            global LOGlist
+            print("ouss")
+            while settings.simulationStatus == "ON" and ((time.time() - simulationStartTime) <= simulationDuration):
+                   
                 global sentResources
-                global LOGlist
-                listToSend = loadUseCaseObjects(self.useCase_dropBox.currentText())
-                sentResources = listToSend
+    
+                # LOGlist = LOGlist + str(usecaseSelection) + " objects have been loaded correctly " +'\n'
+                # LOGlist = LOGlist + str(objectsToCreate) +'\n'
+                if(len(self.useCase_dropBox.currentText())>0):
+                    usecaseSelection = self.useCase_dropBox.currentText()
+                    objectsToCreate = loadUseCaseObjects(setUsecaseObjects(usecaseSelection))   
+                    sentResources = objectsToCreate
+                    self.sendResource_function(objectsToCreate)
+                    LOGlist = LOGlist + str(datetime.now())+ " " + "sent successfuly objects" + str(objectsToCreate)+'\n'
+                    self.dataSentSignal.emit()
+                    sleep(sendingPeriod)
+                #LOGlist = LOGlist + str(datetime.now())+ " " +str(sentResources)  + str(time.time() - simulationStartTime) + str(sentResources)+'\n'              
+                else:
+                    print(len(self.useCase_dropBox.currentText()))
                 
-                LOGlist = LOGlist + str(datetime.now())+ " " +str(sentResources) +'\n' + str(time.time() - simulationStartTime)+'\n'
-               
-                self.dataSentSignal.emit()
                 
-                self.sendResource_function(listToSend)
-                sleep(sendingPeriod)
+                
        
         t6 = threading.Thread(target=periodicMode_thread)
         t6.start()
 
-    def startSimulation_function(self):
-
-        self.startSimulationSignal.emit()
         
+    def startSimulation_function(self):
+        
+        global LOGlist      
         global simulationDuration
         global simulationStartTime
+        global usecaseSelection
         settings.simulationStatus = "ON"
+        self.startSimulationSignal.emit()
+        #lw_sniffer = self.createSniffer()
+        #threading.Thread(target=self.checkUseCaseSelection())
+        
+        sendingPeriod = int(self.sendingDataPeridod_Input.text())
+        simulationDuration = int(self.simulationDuration_Input.text())
+
+        usecaseSelection = self.useCase_dropBox.currentText()
+
+        if(usecaseSelection!=""):
+            threading.Thread(target=connectIface_function())
+            sleep(9)
+        else:
+            self.info_display.setText("Please select use case")   
+
+
         if simulationStartTime == 'None':
                 simulationStartTime = time.time()
         else:
                 simulationStartTime = pausedTime
 
-        simulationDuration = int(self.simulationDuration_Input.text()) #in seconds
-        sendingPeriod = int(self.sendingDataPeridod_Input.text())
-        resourceList =loadUseCaseObjects(useCaseSelction)
- 
-        sleep(2)
-        listToSend = loadUseCaseObjects(useCaseSelction)
         self.peridoicMode_fucntion(sendingPeriod,simulationDuration)
         
-        
-
-    
-
-
     def stopSimulation_function(self):
-        #global simulationStatus
         self.stopSimulationSignal.emit()
         settings.simulationStatus = "OFF"
 
         
-
-
+        
+    
     def selectUseCase(self):
         global lw_sniffer
-        lw_sniffer = self.createSniffer()
+        
         global useCaseSelction
         useCaseSelction = self.useCase_dropBox.currentText()
         
@@ -162,22 +188,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow       ):
         match useCaseSelction:
             case "Bike tracking":
                 self.useCaseDescription_display.setText("This is Bike tracking use case description")
-                loadUseCaseObjects("Bike tracking")
+                setUsecaseObjects("Bike tracking")
             case "Eclairage public":
                 self.useCaseDescription_display.setText("This is Chaîne de froid use case description")
-                loadUseCaseObjects("Eclairage public")
+                setUsecaseObjects("Eclairage public")
             case "Qualité de l'air":
                 self.useCaseDescription_display.setText("This is Qualité de l'air use case description") 
-                loadUseCaseObjects("Qualité de l'air")
+                setUsecaseObjects("Qualité de l'air")
             case "Poubelles intelligentes":
                 self.useCaseDescription_display.setText("This is Poubelles intelligentes use case description") 
-                loadUseCaseObjects("Poubelles intelligentes")
+                setUsecaseObjects("Poubelles intelligentes")
             case "Chaîne de froid":
                 self.useCaseDescription_display.setText("This is Chaîne de froid use case description") 
-                loadUseCaseObjects("Chaîne de froid")        
+                setUsecaseObjects("Chaîne de froid")        
             case "Salle hors-sac":
                 self.useCaseDescription_display.setText("This is salle hors-sac use case description")    
-                loadUseCaseObjects("Salle hors-sac")         
+                setUsecaseObjects("Salle hors-sac")         
 
 
     def setAvailableEvents(self):
@@ -272,9 +298,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow       ):
                 return lw_sniffer
         snifferthread = threading.Thread(target=create_createSniffer_thread)
         snifferthread.start()
-    def snifflwm2m(self):
-        global lw_sniffer
-        pass
 
     @QtCore.pyqtSlot()           
     def measureData(self):
@@ -283,16 +306,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow       ):
         #while settings.simulationStatus == "ON" and ((time.time() - simulationStartTime) <= simulationDuration):
         self.dataUsage_display.setText(packetLen_global)
         
-        
-
-#     def selectEvent(self):loadEventList
     @QtCore.pyqtSlot()
     def showLog(self):
        global LOGlist
-       global count
-       global sentResources
-       count = count +1
-       global lw_sniffer
        self.info_display.setText(LOGlist)
        
     @QtCore.pyqtSlot()
@@ -313,6 +329,8 @@ if __name__ == '__main__':
     import sys
     app = QApplication(sys.argv)
     window = MainWindow()
-    threading.Thread(target=connectIface_function())
+    settings.init()
+    #threading.Thread(target=connectIface_function())
     window.show()
+    
     sys.exit(app.exec_())
