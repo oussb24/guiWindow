@@ -103,8 +103,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 strSend = "send -c=110 " + str(resourceList[presentResource])+'\n' #strSend = "send " + resourceList[presentResource]+'\n' #"create 3424"
                 p.stdin.write(bytes(strSend,encoding='utf8'))
                 p.stdin.flush()
-                self.dataSentSignal.emit()
-    
+                #self.dataSentSignal.emit()
+
+        self.dataSentSignal.emit()
     def loadUseCaseObjects(self,eventObjectsToCreate):
         from mainwindow import loadedUseCasesSatus
         from clientConnex import p 
@@ -114,14 +115,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 strCreate = "create " + str(objects)+'\n' #"create 3424"
                 p.stdin.write(bytes(strCreate,encoding='utf8'))
                 p.stdin.flush()
-                self.dataSentSignal.emit()
+            #self.dataSentSignal.emit()
         t2 = threading.Thread(target=addResource_thread)
         t2.start()
         loadedUseCasesSatus = "YES"
         return eventObjectsToCreate
     def peridoicMode_fucntion(self,sendingPeriod,simulationDuration): #,sendingDataPeridod_Input,resourceList
         global t6
-        global listToSen
+        
         
         i=0
         def periodicMode_thread():
@@ -137,18 +138,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # LOGlist = LOGlist + str(objectsToCreate) +'\n'
                 if(len(self.useCase_dropBox.currentText())>0):
                     if(self.useCase_dropBox.currentText()!= previousText):
-                        LOGlist =LOGlist + "created objects " + str(setUsecaseObjects(self.useCase_dropBox.currentText()))+ '\n'
-                    
-                    usecaseSelection = self.useCase_dropBox.currentText()
-                    objectsToCreate = self.loadUseCaseObjects(setUsecaseObjects(usecaseSelection))  
-                    sleep(3)
-                    #self.dataSentSignal.emit()   
-                    sentResources = objectsToCreate
-                    self.sendResource_function([3333])#objectsToCreate
-                    LOGlist = str(datetime.now())+ " " + "sent successfuly objects" + str(objectsToCreate)+'\n' +LOGlist 
-                    
-                    previousText = self.useCase_dropBox.currentText()
-                    sleep(sendingPeriod)
+                        usecaseSelection = self.useCase_dropBox.currentText()
+                        objectsToCreate = self.loadUseCaseObjects(setUsecaseObjects(usecaseSelection))
+                        LOGlist =str(datetime.now())+ " " + "created objects " + str(setUsecaseObjects(self.useCase_dropBox.currentText()))+ '\n' +LOGlist 
+                                            #self.dataSentSignal.emit()   
+                        self.dataSentSignal.emit()
+                        sentResources = objectsToCreate
+                        self.sendResource_function(sentResources)#objectsToCreate
+                        LOGlist = str(datetime.now())+ " " + "sent successfuly objects" + str(objectsToCreate)+'\n' +LOGlist 
+                        self.dataSentSignal.emit()
+                        previousText = self.useCase_dropBox.currentText()
+                        sleep(sendingPeriod)
+                    else:
+                        self.dataSentSignal.emit()   
+                        sentResources = objectsToCreate
+                        self.sendResource_function(sentResources)#objectsToCreate
+                        LOGlist = str(datetime.now())+ " " + "sent successfuly objects" + str(objectsToCreate)+'\n' +LOGlist 
+                        
+                        previousText = self.useCase_dropBox.currentText()
+                        sleep(sendingPeriod)
                 #LOGlist = LOGlist + str(datetime.now())+ " " +str(sentResources)  + str(time.time() - simulationStartTime) + str(sentResources)+'\n'              
                 else:
                     print(len(self.useCase_dropBox.currentText()))
@@ -162,7 +170,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
     def startSimulation_function(self):
         
-        global LOGlist      
+        global LOGlist          
         global simulationDuration
         global simulationStartTime
         global usecaseSelection
@@ -178,6 +186,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         if(usecaseSelection!=""):
             threading.Thread(target=connectIface_function())
+            LOGlist = str(datetime.now()) + " LWM2M client connected to LiveObjects" + '\n' + LOGlist 
+            self.dataSentSignal.emit()
             sleep(5)
         else:
             self.info_display.setText("Please select use case")   
@@ -320,7 +330,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     @QtCore.pyqtSlot()           
     def measureData(self):
-        from lwm2mSniff import packetLen_global,packet_number
+        from lwm2mSniff import packetLen_global
         
         #while settings.simulationStatus == "ON" and ((time.time() - simulationStartTime) <= simulationDuration):
         self.dataUsage_display.setText(packetLen_global)
