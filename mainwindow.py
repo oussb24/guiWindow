@@ -100,7 +100,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         from clientConnex import p
         
         for presentResource in range(len(resourceList)):
-                strSend = "send -c=110 " + str(resourceList[presentResource])+'\n' #strSend = "send " + resourceList[presentResource]+'\n' #"create 3424"
+                strSend = "send -c=110 current-value " + str(resourceList[presentResource])+'\n' #strSend = "send " + resourceList[presentResource]+'\n' #"create 3424"
                 p.stdin.write(bytes(strSend,encoding='utf8'))
                 p.stdin.flush()
                 #self.dataSentSignal.emit()
@@ -199,14 +199,67 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 simulationStartTime = pausedTime
 
         self.peridoicMode_fucntion(sendingPeriod,simulationDuration)
-        
+        #self.collectedDataPeriodic(sendingPeriod,simulationDuration)
     def stopSimulation_function(self):
         self.stopSimulationSignal.emit()
         settings.simulationStatus = "OFF"
 
+    def collectData(self,existingObjects):
+       from clientConnex import p
+       for object in range(len(existingObjects)):
+                strCollect = "collect " + str(existingObjects[object])+'\n' #strSend = "send " + resourceList[presentResource]+'\n' #"create 3424"
+                p.stdin.write(bytes(strCollect,encoding='utf8'))
+                p.stdin.flush()
+
+    def sendCollectedData(self,existingObjects):
+        from clientConnex import p
         
+        for object in range(len(existingObjects)):
+                strSend = "send -c=110 collected-value" +'\n' #strSend = "send " + resourceList[presentResource]+'\n' #"create 3424"
+                p.stdin.write(bytes(strSend,encoding='utf8'))
+                p.stdin.flush()
+        self.dataSentSignal.emit()
+    def collectedDataPeriodic(self,sendingPeriod,simulationDuration):
         
-    
+        def collectMode_thread():
+            global LOGlist
+            global existingObjects
+            collectionCounter= 0
+            previousText = " "
+            while settings.simulationStatus == "ON" and ((time.time() - simulationStartTime) <= simulationDuration):
+                if(len(self.useCase_dropBox.currentText())>0):
+                        if(self.useCase_dropBox.currentText()!= previousText):
+                            usecaseSelection = self.useCase_dropBox.currentText()
+                            existingObjects = self.loadUseCaseObjects(setUsecaseObjects(usecaseSelection))
+                            LOGlist =str(datetime.now())+ " " + "created objects " + str(setUsecaseObjects(self.useCase_dropBox.currentText()))+ '\n' +LOGlist 
+                                                #self.dataSentSignal.emit()   
+                            collectionCounter= collectionCounter +1
+                            self.dataSentSignal.emit()
+                            
+
+                            self.collectData(existingObjects)#objectsToCreate
+                            LOGlist = str(datetime.now())+ " " + "collected successfuly data" + str(existingObjects)+'\n' +LOGlist 
+                            self.dataSentSignal.emit()
+                            previousText = self.useCase_dropBox.currentText()
+                            sleep(sendingPeriod)
+                        else:
+                              
+                            
+                            self.collectData(existingObjects)#objectsToCreate
+                            LOGlist = str(datetime.now())+ " " + "collected successfuly data" + str(existingObjects)+'\n' +LOGlist
+                            collectionCounter= collectionCounter +1
+                            self.dataSentSignal.emit() 
+                            previousText = self.useCase_dropBox.currentText()
+                            sleep(sendingPeriod)
+                    #LOGlist = LOGlist + str(datetime.now())+ " " +str(sentResources)  + str(time.time() - simulationStartTime) + str(sentResources)+'\n'              
+                else:
+                        print(len(self.useCase_dropBox.currentText()))
+            self.sendCollectedData(existingObjects)
+            LOGlist = str(datetime.now())+ " " + "sent successfuly " +str(collectionCounter)+" collections" + str(existingObjects)+'\n' +LOGlist
+            self.dataSentSignal.emit()
+
+        threading.Thread(target=collectMode_thread).start()
+
     def selectUseCase(self):
         global lw_sniffer
         

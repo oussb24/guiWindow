@@ -22,10 +22,11 @@ logging.basicConfig(format='%(asctime)s %(message)s')
 def connectIface_function():
             global p
             if (p =='None'):
-                # urn = "java -jar leshan-client-demo.jar "+ "-n "+ "urn:lo:lwm2m:"+ self.connectClient_inputEndPointName.text() +" -i "+ self.connectClient_inputEndPointName.text()+" -p 1d576207727841a7b9aa2a1f24448f86 -u lwm2m.integ.m2m.orange.com"
-                # urn = urn.strip('"')
-                #p = subprocess.Popen(["java","-jar","leshan-client-demo.jar","-n","urn:lo:lwm2m:"+self.connectClient_inputEndPointName.text(),"-i",self.connectClient_inputEndPointName.text(),"-p","1d576207727841a7b9aa2a1f24448f86","-u","lwm2m.integ.m2m.orange.com"], stdin=subprocess.PIPE,stderr=subprocess.PIPE)
-                p = subprocess.Popen("java -jar leshan.jar -u lwm2m.integ.m2m.orange.com -n urn:lo:lwm2m:test -i test -p 1d576207727841a7b9aa2a1f24448f86",stdin=subprocess.PIPE,shell=True)
+   
+                #connect with encryption to LiveObjects
+                #p = subprocess.Popen("java -jar leshan.jar -u lwm2m.integ.m2m.orange.com -n urn:lo:lwm2m:test -i test -p 1d576207727841a7b9aa2a1f24448f86 -l 24000",stdin=subprocess.PIPE,shell=True)
+                #connect without encrytpion to leshan server
+                p = subprocess.Popen("java -jar leshan.jar -n rtest -u leshan.eclipseprojects.io:5683 -l 24000",stdin=subprocess.PIPE,shell=True)
                 print("P TYPE IS" + str(type(p)))
             else:
                 print("client already connected")
