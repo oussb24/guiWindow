@@ -7,7 +7,12 @@ def setUsecaseObjects(usecaseSelection):
     from clientConnex import p
     from mainwindow import loadedUseCasesSatus
     eventObjectsToCreate =""
-    
+    # 3333 : Time, 33336, location, 3411 Battery, 10282 capteur failure
+    # 3417 : config lumiere, 3432 compteur de passage, 10350 eclairage 
+    # 3303 : temperature, 3407 : smoke alarm
+    # 3435 : niveau de remplissage,
+    #3328 : niveau de puissance 
+    #
     match usecaseSelection:
             case "Bike tracking":
                eventObjectsToCreate=[3333,3336,3411,10282]
@@ -26,20 +31,7 @@ def setUsecaseObjects(usecaseSelection):
     return eventObjectsToCreate
 
 
-def loadUseCaseObjects(eventObjectsToCreate):
-    from mainwindow import loadedUseCasesSatus
-    from clientConnex import p 
-    def addResource_thread():
-        
-        for objects in eventObjectsToCreate:
-            strCreate = "create " + str(objects)+'\n' #"create 3424"
-            p.stdin.write(bytes(strCreate,encoding='utf8'))
-            p.stdin.flush()
-            self.dataSentSignal.emit()
-    t2 = threading.Thread(target=addResource_thread)
-    t2.start()
-    loadedUseCasesSatus = "YES"
-    return eventObjectsToCreate
+
     
     
         
